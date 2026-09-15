@@ -4,14 +4,14 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 
-from xiaowei.soul.behavior import BehaviorSignalGenerator
-from xiaowei.soul.emotion import EmotionAnalyzer
-from xiaowei.soul.memory_selector import (
+from ayaka.soul.behavior import BehaviorSignalGenerator
+from ayaka.soul.emotion import EmotionAnalyzer
+from ayaka.soul.memory_selector import (
     RuleBasedSoulMemoryExtractor,
     SoulMemorySelector,
 )
-from xiaowei.soul.memory_store import SoulMemoryStore
-from xiaowei.soul.models import (
+from ayaka.soul.memory_store import SoulMemoryStore
+from ayaka.soul.models import (
     EmotionType,
     PersonalityDimensions,
     PersonalityProfile,
@@ -19,9 +19,9 @@ from xiaowei.soul.models import (
     SoulMemory,
     SoulState,
 )
-from xiaowei.soul.prompt_composer import SoulPromptComposer
-from xiaowei.soul.state_machine import SoulStateMachine
-from xiaowei.soul.state_store import SoulStateStore
+from ayaka.soul.prompt_composer import SoulPromptComposer
+from ayaka.soul.state_machine import SoulStateMachine
+from ayaka.soul.state_store import SoulStateStore
 
 
 # ---------- EmotionAnalyzer ----------
@@ -66,7 +66,7 @@ def test_emotion_deltas():
 # ---------- BehaviorSignalGenerator ----------
 
 def _behavior_gen() -> BehaviorSignalGenerator:
-    from xiaowei.soul.models import PersonaType
+    from ayaka.soul.models import PersonaType
     weights = {
         PersonaType.WARM_COMPANION.value: {
             "warmth": {"empathy": 0.30, "attachment": 0.25, "trust": 0.20, "driveConnection": 0.25},
@@ -115,7 +115,7 @@ def test_behavior_relationship_tone():
 def test_state_machine_turn_increment():
     sm = SoulStateMachine()
     state = SoulState.defaults("d1", "c1", "s1")
-    from xiaowei.soul.models import SoulPerception, SoulTurnTrace
+    from ayaka.soul.models import SoulPerception, SoulTurnTrace
 
     nxt = sm.next(state, SoulPerception.neutral(), SoulTurnTrace.empty(), datetime.now())
     assert nxt.turn_count == state.turn_count + 1
@@ -124,7 +124,7 @@ def test_state_machine_turn_increment():
 def test_state_machine_tool_success_boosts_trust():
     sm = SoulStateMachine()
     state = SoulState.defaults("d1", "c1", "s1")
-    from xiaowei.soul.models import SoulPerception, SoulTurnTrace
+    from ayaka.soul.models import SoulPerception, SoulTurnTrace
 
     trace = SoulTurnTrace(tool_call_count=1, tool_success_count=1)
     nxt = sm.next(state, SoulPerception.neutral(), trace, datetime.now())
@@ -134,7 +134,7 @@ def test_state_machine_tool_success_boosts_trust():
 
 def test_state_machine_decay():
     sm = SoulStateMachine()
-    from xiaowei.soul.models import SoulPerception, SoulTurnTrace
+    from ayaka.soul.models import SoulPerception, SoulTurnTrace
 
     state = SoulState.defaults("d1", "c1", "s1")
     state.valence = 0.9
@@ -151,7 +151,7 @@ def test_prompt_composer_sections():
     composer = SoulPromptComposer()
     profile = PersonalityProfile()
     state = SoulState.defaults("d1", "c1", "s1")
-    from xiaowei.soul.models import BehaviorSignal
+    from ayaka.soul.models import BehaviorSignal
 
     signal = BehaviorSignal.neutral()
     prompt = composer.compose(profile, state, signal, signal.relationship_tone)
@@ -165,7 +165,7 @@ def test_prompt_composer_memory_section():
     composer = SoulPromptComposer()
     profile = PersonalityProfile()
     state = SoulState.defaults("d1", "c1", "s1")
-    from xiaowei.soul.models import BehaviorSignal
+    from ayaka.soul.models import BehaviorSignal
 
     signal = BehaviorSignal.neutral()
     memories = [

@@ -1,40 +1,37 @@
-# langchain-xiaowei 重构规格说明书
+# langchain-ayaka 规格说明书
 
-> 把 `xiaowei-two` 的 Java AgentScope 智能体系统,用 Python LangChain + LangGraph 重构一遍。
+> 一个基于 Python LangChain + LangGraph 的陪伴型智能体系统。
 > 本文件是**唯一权威规格**,后续编码严格按此执行。
-> 原项目只读不改,不碰原数据库。
 
 ---
 
-## 0. 项目定位与学习目标
+## 0. 项目定位与目标
 
 ### 0.1 为什么做这个项目
 
-通过把一个**真实生产级智能体系统**从 Java AgentScope 迁移到 Python LangChain/LangGraph,
+通过实现一个**真实生产级智能体系统**,
 在实战中掌握大模型应用开发的核心能力。
 
 **本项目聚焦对话闭环**,不做场景引擎、不做主动关怀、不做设备接入。
 
 ### 0.2 学什么
 
-| 能力 | 对应原项目模块 | LangChain/LangGraph 对应 |
-|------|--------------|------------------------|
-| LLM 抽象与多 provider 路由 | `AgentConfigResolver.createAgentscopeModel` | `ChatOpenAI` / `ChatOllama` |
-| ReAct Agent 与工具调用 | `HarnessAgent` + `Toolkit` | `create_react_agent` / 自定义 `StateGraph` |
-| MCP 协议集成 | `McpClientBuilder` (LOCAL/REMOTE) | `langchain-mcp-adapters` |
-| 流式输出 SSE | `AgentChatServiceImpl.chatStream` | `astream_events` + FastAPI `StreamingResponse` |
-| 长期记忆与向量检索 | `ReMeMemoryMiddleware` + `ReMeMemoryStore` | LangGraph checkpoint + 自定义 store |
-| 人格系统与 Prompt 工程 | `SoulTurnPreparer` + `SoulPromptComposer` | LangGraph 节点 + `ChatPromptTemplate` |
-| 灵魂状态机 | `SoulStateMachine` | LangGraph 节点 + 纯函数 |
-| 多用户/多会话隔离 | `deviceSn` + `contactId` + `sessionId` | LangGraph `thread_id` + checkpoint |
+| 能力 | LangChain/LangGraph 对应 |
+|------|--------------------------|
+| LLM 抽象与多 provider 路由 | `ChatOpenAI` / `ChatOllama` |
+| ReAct Agent 与工具调用 | `create_react_agent` / 自定义 `StateGraph` |
+| MCP 协议集成 | `langchain-mcp-adapters` |
+| 流式输出 SSE | `astream_events` + FastAPI `StreamingResponse` |
+| 长期记忆与向量检索 | LangGraph checkpoint + 自定义 store |
+| 人格系统与 Prompt 工程 | LangGraph 节点 + `ChatPromptTemplate` |
+| 灵魂状态机 | LangGraph 节点 + 纯函数 |
+| 多用户/多会话隔离 | LangGraph `thread_id` + checkpoint |
 
 ### 0.3 不做什么
 
-- **不碰原项目**: `D:\After\workspace\xiaowei-two` 只读不改
-- **不碰原数据库**: 不连原 MySQL,配置用 YAML
 - **不做设备接入**: 不接 MQTT/机器人硬件
-- **不做场景引擎**: 砍掉 `scenario` 包
-- **不做主动关怀**: 砍掉 `proactive` 包
+- **不做场景引擎**: 不做 scenario 包
+- **不做主动关怀**: 不做 proactive 包
 - **不做前端**: 只做后端 API + SSE,用 curl 测试
 
 ### 0.4 技术栈
@@ -56,25 +53,25 @@ httpx                   # REST 工具
 
 ### 0.5 部署目标
 
-2 核 2G 服务器,个人使用,不商用。
-LLM 走远程 API,不在本地跑模型。
-记忆用本地 SQLite/JSON,不跑独立服务。
+2 核 2G 服务器,个人使用,不商用.
+LLM 走远程 API,不在本地跑模型.
+记忆用本地 SQLite/JSON,不跑独立服务.
 
 ---
 
-## 1. 原项目架构参考(只读)
+## 1. 系统架构
 
 ### 1.1 本项目涉及的层
 
 ```
 ┌─────────────────────────────────────────────────────────┐
 │ 1. Agent 生命周期层                                      │
-│    AgentManager (懒加载/热重载) + AgentConfigResolver     │
+│    AgentManager (懒加载/热重载) + ConfigResolver          │
 ├─────────────────────────────────────────────────────────┤
 │ 2. 对话入口层                                            │
-│    AgentChatServiceImpl (SSE/Sync)                      │
+│    ChatService (SSE/Sync)                                │
 ├─────────────────────────────────────────────────────────┤
-│ 3. 中间件链 (AgentScope MiddlewareBase)                  │
+│ 3. 处理链                                                │
 │    SoulPrompt → Context → ModelOptions                   │
 │    → ReMeMemory → AsyncCompaction → PromptTracer        │
 ├─────────────────────────────────────────────────────────┤
@@ -87,12 +84,12 @@ LLM 走远程 API,不在本地跑模型。
 └─────────────────────────────────────────────────────────┘
 ```
 
-砍掉的层: 场景引擎(6)、主动关怀(7)、设备接入相关。
+不做的层: 场景引擎(6)、主动关怀(7)、设备接入相关.
 
 ### 1.2 一次对话的完整流程(本项目范围)
 
 ```
-用户消息 → AgentChatServiceImpl.chatStream
+用户消息 → ChatService.chatStream
   ├─ 解析 deviceSn / contactId / sessionId
   ├─ AgentManager.getAgent(deviceSn)  ← 懒加载 Agent
   ├─ SoulOrchestrator.prepare()       ← 灵魂上下文准备
@@ -103,7 +100,7 @@ LLM 走远程 API,不在本地跑模型。
   │   ├─ 记忆召回 (SoulMemorySelector: 相关性选择)
   │   └─ Prompt 组装 (SoulPromptComposer: 拼装人格/情绪/记忆段)
   ├─ agent.streamEvents(messages, ctx)
-  │   └─ 中间件链执行:
+  │   └─ 处理链执行:
   │       1. SoulSystemPromptMiddleware  → 注入人格 prompt
   │       2. ContextSystemPromptMiddleware → 注入前端上下文
   │       3. ReMeMemoryMiddleware → 检索长期记忆注入
@@ -116,11 +113,11 @@ LLM 走远程 API,不在本地跑模型。
 
 ---
 
-## 2. Python 重构架构
+## 2. 架构设计
 
-### 2.1 核心映射:中间件链 → LangGraph StateGraph
+### 2.1 核心设计: 处理链 → LangGraph StateGraph
 
-原项目的中间件链本质是 **"预处理 → ReAct 循环 → 后处理"**。
+系统的处理链本质是 **"预处理 → ReAct 循环 → 后处理"**。
 LangGraph 的 `StateGraph` 天然表达这个结构:
 
 ```
@@ -150,12 +147,12 @@ LangGraph 的 `StateGraph` 天然表达这个结构:
 ### 2.2 项目目录结构
 
 ```
-langchain-xiaowei/
+langchain-ayaka/
 ├── spec/
 │   └── SPEC.md                 # 本文件
 ├── pyproject.toml
 ├── README.md
-├── config/                      # YAML 配置(对应原数据库)
+├── config/                      # YAML 配置
 │   ├── agents/
 │   │   └── default.yaml         # 智能体配置
 │   ├── models/
@@ -169,7 +166,7 @@ langchain-xiaowei/
 │       ├── strategies.yaml      # 3 底座策略(权重/deltas/系数)
 │       └── prompt_rules.yaml    # 档位文案
 ├── src/
-│   └── xiaowei/
+│   └── ayaka/
 │       ├── __init__.py
 │       ├── config.py            # 配置加载
 │       ├── llm/
@@ -220,9 +217,7 @@ langchain-xiaowei/
 
 ### 3.1 LLM 工厂 (`llm/factory.py`)
 
-**对应原项目**: `AgentConfigResolver.createAgentscopeModel`
-
-**原项目行为**:
+**路由行为**:
 - 按 `providerCode` 路由: `qianwen` → DashScope, `ollama` → Ollama, 其他 → OpenAI 兼容
 - 参数: `apiHost`, `apiKey`, `modelName`, `stream`
 
@@ -271,21 +266,16 @@ model_param_json:
 
 ### 3.2 工具系统 (`tools/`)
 
-**对应原项目**: `AgentConfigResolver.buildToolkit` + `Toolkit`
+**支持 4 种工具类型**(不做 RPC/设备工具):
 
-**原项目支持 5 种工具类型**,本项目实现 4 种(砍掉 RPC/设备工具):
-
-| 类型 | 原项目 | 本项目 | 说明 |
-|------|--------|--------|------|
-| LOCAL | stdio MCP Server | ✅ | `langchain-mcp-adapters` |
-| REMOTE | streamableHttp/SSE MCP | ✅ | `langchain-mcp-adapters` |
-| BUILTIN | 反射创建内置工具 | ✅ | `@tool` 装饰器 |
-| REST | HTTP REST API | ✅ | `StructuredTool` + httpx |
-| RPC | MQTT 远程调用 | ❌ | 砍掉,不接设备 |
+| 类型 | 本项目 | 说明 |
+|------|--------|------|
+| LOCAL | ✅ | stdio MCP Server,`langchain-mcp-adapters` |
+| REMOTE | ✅ | streamableHttp/SSE MCP,`langchain-mcp-adapters` |
+| BUILTIN | ✅ | `@tool` 装饰器 |
+| REST | ✅ | `StructuredTool` + httpx |
 
 #### 3.2.1 内置工具 (`tools/builtin.py`)
-
-**对应**: `CurrentTimeTool`, `CalculatorTool`
 
 ```python
 from langchain_core.tools import tool
@@ -306,8 +296,6 @@ def calculator(expression: str) -> str:
 ```
 
 #### 3.2.2 MCP 工具 (`tools/mcp.py`)
-
-**对应**: `registerLocalTool` / `registerRemoteTool`
 
 ```python
 from langchain_mcp_adapters.client import MultiServerMCPClient
@@ -333,8 +321,6 @@ async def create_mcp_tools(tool_configs: list[ToolConfig]) -> list:
 
 #### 3.2.3 REST 工具 (`tools/rest.py`)
 
-**对应**: `RestClientWrapper` + `RestToolDefinition`
-
 ```python
 from langchain_core.tools import StructuredTool
 import httpx
@@ -353,8 +339,6 @@ def create_rest_tool(name: str, description: str, params: dict) -> StructuredToo
 ```
 
 #### 3.2.4 知识库检索 (`tools/knowledge.py`)
-
-**对应**: `KnowledgeSearchTool`
 
 ```python
 from langchain_core.tools import tool
@@ -378,11 +362,9 @@ async def knowledge_search(query: str) -> str:
 
 ### 3.3 灵魂系统 (`soul/`)
 
-**对应原项目**: `soul` 包(核心,最值得学的部分)
+**核心模块**(最值得学的部分)
 
 #### 3.3.1 数据模型 (`soul/models.py`)
-
-**对应**: `SoulContext`, `SoulState`, `PersonalityProfile`, `PersonalityDimensions`, `BehaviorSignal`, `RelationshipTone`
 
 ```python
 from pydantic import BaseModel, Field
@@ -494,9 +476,7 @@ class SoulContext(BaseModel):
 
 #### 3.3.2 情绪感知 (`soul/emotion.py`)
 
-**对应**: `EmotionAnalyzer` + `TextEmotionPerceiver`
-
-**原项目行为**:
+**行为**:
 1. 关键词命中优先级: ANGRY > NEGATIVE_FEEDBACK > GRATEFUL > SAD > ANXIOUS > POSITIVE > CONFIDING(long) > NEUTRAL
 2. 否定前缀检测: 关键词前 1-2 字为 `不/没/别/未/有没` 则该位置不命中
 3. 每种情绪有 6 维 deltas (valence/arousal/dominance/trust/attachment/frustration)
@@ -551,9 +531,7 @@ class EmotionAnalyzer:
 
 #### 3.3.3 行为信号计算 (`soul/behavior.py`)
 
-**对应**: `BehaviorSignalGenerator`
-
-**原项目行为**: 6 个行为信号加权计算,权重从 `BehaviorStrategy` 读取。
+**行为**: 6 个行为信号加权计算,权重从 `BehaviorStrategy` 读取。
 
 ```python
 class BehaviorSignalGenerator:
@@ -580,9 +558,7 @@ class BehaviorSignalGenerator:
 
 #### 3.3.4 状态机 (`soul/state_machine.py`)
 
-**对应**: `SoulStateMachine`
-
-**原项目行为**:
+**行为**:
 - 衰减率: `clamp(0.05 + minutes/240 * 0.30, 0.05, 0.35)`
 - PAD 衰减回 baseline + 叠加信号 delta
 - 工具成功: trust +0.03, frustration -0.05
@@ -622,9 +598,7 @@ class SoulStateMachine:
 
 #### 3.3.5 Prompt 组装 (`soul/prompt_composer.py`)
 
-**对应**: `SoulPromptComposer`
-
-**原项目行为**: 拼装以下段落到系统提示:
+**行为**: 拼装以下段落到系统提示:
 1. 身份 ownership 声明("请自然地成为这个人")
 2. 【本轮表达倾向】6 维行为信号按四档取文案
 3. 【此刻情绪底色】PAD 三维按四档取文案
@@ -663,8 +637,6 @@ rules:
 
 #### 3.3.6 灵魂编排器 (`soul/orchestrator.py`)
 
-**对应**: `SoulOrchestrator` + `SoulTurnPreparer` + `SoulTurnFinalizer`
-
 ```python
 class SoulOrchestrator:
     def __init__(self, ...):
@@ -688,13 +660,9 @@ class SoulOrchestrator:
 
 ### 3.4 长期记忆 (`memory/`)
 
-**对应原项目**: `memory` 包
-
 #### 3.4.1 ReMe 存储 (`memory/reme_store.py`)
 
-**对应**: `ReMeMemoryStore`
-
-**原项目行为**:
+**行为**:
 - 按 `(deviceSn, contactId)` 隔离 workspace
 - `workspace_id = deviceSn + "_" + contactId`
 - 匿名对话跳过
@@ -730,8 +698,6 @@ class ReMeMemoryStore:
 
 #### 3.4.2 匿名 ID (`memory/anonymous.py`)
 
-**对应**: `AnonymousContactId`
-
 ```python
 import uuid
 
@@ -755,13 +721,9 @@ def is_anonymous(contact_id: str) -> bool:
 
 ### 3.5 Agent 核心 (`agent/`)
 
-**对应原项目**: `AgentManager` + `HarnessAgent`
-
 #### 3.5.1 Agent 管理器 (`agent/manager.py`)
 
-**对应**: `AgentManager`
-
-**原项目行为**:
+**行为**:
 - 按 `deviceSn` 懒加载 Agent 实例
 - 注册表 + 热重载(swap 模式)
 
@@ -791,8 +753,6 @@ class AgentManager:
 ```
 
 #### 3.5.2 LangGraph 图定义 (`agent/graph.py`)
-
-**对应**: 中间件链 + ReAct 循环
 
 ```python
 from langgraph.graph import StateGraph, END
@@ -839,15 +799,13 @@ def build_agent_graph(llm, tools, soul_orchestrator, reme_store):
 
 ### 3.6 API 层 (`api/`)
 
-**对应原项目**: `AgentChatController` + `AgentChatServiceImpl`
-
 #### 3.6.1 FastAPI 服务 (`api/server.py`)
 
 ```python
 from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
 
-app = FastAPI(title="langchain-xiaowei")
+app = FastAPI(title="langchain-ayaka")
 
 @app.post("/agent/chat/stream")
 async def chat_stream(request: ChatRequest):
@@ -871,9 +829,7 @@ async def chat_sync(request: ChatRequest):
 
 #### 3.6.2 SSE 事件映射 (`api/sse.py`)
 
-**对应**: `AgentChatServiceImpl.chatStream` 的事件映射
-
-**原项目 SSE 事件**:
+**SSE 事件**:
 - `token` — 文本增量
 - `thinking` — 思考过程
 - `tool_call` — 工具调用开始
@@ -914,9 +870,7 @@ async def _sse_generator(request: ChatRequest):
 
 ### 3.7 意图快捷 (`intent/`)
 
-**对应原项目**: `intent` 包
-
-**原项目行为**: 命中快捷意图(问时间/计算)时,工具结果预填进消息,绕过 ReAct 决策。
+**行为**: 命中快捷意图(问时间/计算)时,工具结果预填进消息,绕过 ReAct 决策。
 
 ```python
 class IntentShortcutEnhancer:
@@ -938,15 +892,13 @@ class IntentShortcutEnhancer:
 
 ### 4.1 Agent 配置 (`config/agents/default.yaml`)
 
-**对应原项目**: `builder_agent` 表
-
 ```yaml
 device_sn: "default"
-name: "小薇"
+name: "ayaka"
 owner_id: "1"
 model_id: 1  # 引用 config/models/
 sys_prompt: |
-  你是小薇,一个温暖、有情绪的陪伴型 AI。
+  你是ayaka,一个温暖、有情绪的陪伴型 AI。
   你有血有肉,会开心、会着急、会委屈、会心疼。
   禁止说"我是机器人""我没有真实情绪"。
 max_iters: 10
@@ -979,8 +931,6 @@ personality_dimensions:
 ```
 
 ### 4.2 人格策略配置 (`config/personality/strategies.yaml`)
-
-**对应**: `WarmCompanionStrategies` 等常量
 
 ```yaml
 WARM_COMPANION:
@@ -1113,18 +1063,18 @@ WARM_COMPANION:
 
 ### 6.1 为什么用 LangGraph 而不是裸 AgentExecutor?
 
-原项目的中间件链是**线性预处理 + ReAct + 后处理**结构,LangGraph 的 `StateGraph` 天然表达:
+系统的处理链是**线性预处理 + ReAct + 后处理**结构,LangGraph 的 `StateGraph` 天然表达:
 - 预处理节点: `prepare_soul`, `retrieve_reme`
 - ReAct: `create_react_agent`
 - 后处理: `record_reme`, `finalize_soul`
 
 裸 `AgentExecutor` 无法优雅表达这个链路。
 
-### 6.2 为什么用 YAML 而不是直接接 MySQL?
+### 6.2 为什么用 YAML 配置?
 
 1. 学习阶段不依赖外部服务,降低环境复杂度
 2. YAML 可版本控制,清晰可见
-3. 2 核 2G 服务器跑 SQLite 比 MySQL 省资源
+3. 2 核 2G 服务器跑 SQLite 比独立数据库省资源
 
 ### 6.3 State 怎么在 LangGraph 节点间传递?
 
@@ -1151,7 +1101,7 @@ LangGraph 的 `checkpointer` + `thread_id`:
 ### 6.5 灵魂状态(SoulState)存哪?
 
 - 阶段 1-3: 内存 dict(重启丢失,够用)
-- 阶段 4+: SQLite(对应原 `AgentStateStore`)
+- 阶段 4+: SQLite
 - 可选: LangGraph `SqliteSaver` 直接持久化
 
 ### 6.6 2 核 2G 部署可行性
@@ -1181,26 +1131,6 @@ SQLite + 本地文件                                ~20MB
 ---
 
 ## 8. 参考资料
-
-### 原项目关键文件(只读参考)
-
-| 模块 | 文件路径 |
-|------|---------|
-| Agent 管理 | `xiaowei-two/.../runtime/AgentManager.java` |
-| 配置解析 | `.../runtime/AgentConfigResolver.java` |
-| 对话入口 | `.../service/impl/AgentChatServiceImpl.java` |
-| 灵魂编排 | `.../soul/orchestration/SoulOrchestrator.java` |
-| 灵魂准备 | `.../soul/orchestration/SoulTurnPreparer.java` |
-| 灵魂收尾 | `.../soul/orchestration/SoulTurnFinalizer.java` |
-| 人格维度 | `.../soul/core/persona/PersonalityDimensions.java` |
-| 人格策略 | `.../soul/core/persona/WarmCompanionStrategies.java` |
-| 情绪分析 | `.../soul/perception/EmotionAnalyzer.java` |
-| 行为信号 | `.../soul/cognition/BehaviorSignalGenerator.java` |
-| 状态机 | `.../soul/cognition/SoulStateMachine.java` |
-| Prompt 组装 | `.../soul/cognition/SoulPromptComposer.java` |
-| ReMe 记忆 | `.../memory/ReMeMemoryStore.java` |
-| ReMe 中间件 | `.../memory/ReMeMemoryMiddleware.java` |
-| 匿名 ID | `.../memory/AnonymousContactId.java` |
 
 ### LangChain/LangGraph 文档
 

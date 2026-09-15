@@ -2783,7 +2783,7 @@ wheels = [
 ]
 
 [[package]]
-name = "xiaowei"
+name = "ayaka"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [

@@ -1,7 +1,7 @@
 [project]
-name = "xiaowei"
+name = "ayaka"
 version = "0.1.0"
-description = "xiaowei agent - LangChain/LangGraph rewrite of the Java AgentScope system"
+description = "ayaka agent - a companion agent system built on LangChain/LangGraph"
 requires-python = ">=3.11"
 dependencies = [
     "langchain>=0.3",

@@ -4,16 +4,16 @@ from __future__ import annotations
 
 import asyncio
 
-from xiaowei.intent import (
+from ayaka.intent import (
     IntentClassifier,
     IntentRule,
     IntentRuleSet,
     IntentShortcutEnhancer,
     IntentShortcutToolRegistry,
 )
-from xiaowei.memory.anonymous import derive_anonymous_contact_id, is_anonymous
-from xiaowei.memory.reme_store import ReMeMemoryStore
-from xiaowei.tools.builtin import calculator, current_time
+from ayaka.memory.anonymous import derive_anonymous_contact_id, is_anonymous
+from ayaka.memory.reme_store import ReMeMemoryStore
+from ayaka.tools.builtin import calculator, current_time
 
 
 # ---------- builtin tools ----------
@@ -151,10 +151,10 @@ def test_intent_calc_boundary_negative():
 
 def test_full_graph_end_to_end(tmp_path):
     import os
-    os.environ["XIAOWEI_FAKE_LLM"] = "1"
+    os.environ["AYAKA_FAKE_LLM"] = "1"
 
-    from xiaowei.agent.manager import AgentManager
-    from xiaowei.config import ConfigLoader
+    from ayaka.agent.manager import AgentManager
+    from ayaka.config import ConfigLoader
     from pathlib import Path
 
     config_dir = Path(__file__).resolve().parents[1] / "config"
@@ -191,10 +191,10 @@ def test_full_graph_end_to_end(tmp_path):
 
 def test_full_graph_session_isolation(tmp_path):
     import os
-    os.environ["XIAOWEI_FAKE_LLM"] = "1"
+    os.environ["AYAKA_FAKE_LLM"] = "1"
 
-    from xiaowei.agent.manager import AgentManager
-    from xiaowei.config import ConfigLoader
+    from ayaka.agent.manager import AgentManager
+    from ayaka.config import ConfigLoader
     from pathlib import Path
 
     config_dir = Path(__file__).resolve().parents[1] / "config"

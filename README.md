@@ -1,7 +1,7 @@
-# langchain-xiaowei
+# langchain-ayaka
 
-把 `xiaowei-two` 的 Java AgentScope 智能体系统,用 Python LangChain + LangGraph 重构。
-学习项目,不商用。规格见 `spec/SPEC.md`。
+一个基于 Python LangChain + LangGraph 的陪伴型智能体系统。
+个人学习项目,不商用。规格见 `spec/SPEC.md`。
 
 ## 架构
 
@@ -9,13 +9,13 @@
 START -> prepare_soul -> retrieve_reme -> react_agent -> record_reme -> finalize_soul -> END
 ```
 
-| 节点 | 对应原 Java | 职责 |
-|------|------------|------|
-| prepare_soul | SoulTurnPreparer | 人格加载 + 情绪感知 + 行为信号 + 记忆召回 + Prompt 组装 |
-| retrieve_reme | ReMeMemoryMiddleware | 长期记忆检索注入 |
-| react_agent | HarnessAgent ReAct | LLM ↔ 工具循环 |
-| record_reme | ReMeMemoryMiddleware.record | 本轮对话写入长期记忆 |
-| finalize_soul | SoulTurnFinalizer | 状态机转移 + 记忆抽取摄取 |
+| 节点 | 职责 |
+|------|------|
+| prepare_soul | 人格加载 + 情绪感知 + 行为信号 + 记忆召回 + Prompt 组装 |
+| retrieve_reme | 长期记忆检索注入 |
+| react_agent | LLM ↔ 工具循环 |
+| record_reme | 本轮对话写入长期记忆 |
+| finalize_soul | 状态机转移 + 记忆抽取摄取 |
 
 ## 快速开始
 
@@ -25,10 +25,10 @@ pip install -e ".[test]"
 
 # 离线模式(不需要 API Key,用 FakeLLM 验证链路)
 # Windows PowerShell
-$env:XIAOWEI_FAKE_LLM = "1"; python scripts/run.py
+$env:AYAKA_FAKE_LLM = "1"; python scripts/run.py
 
 # Linux/macOS
-XIAOWEI_FAKE_LLM=1 python scripts/run.py
+AYAKA_FAKE_LLM=1 python scripts/run.py
 
 # 真实模式:设置环境变量后启动
 $env:DASHSCOPE_API_KEY = "sk-xxx"; python scripts/run.py
@@ -38,7 +38,7 @@ $env:DASHSCOPE_API_KEY = "sk-xxx"; python scripts/run.py
 
 ```bash
 # 单元 + 端到端测试(30 个,全部离线可跑)
-$env:XIAOWEI_FAKE_LLM = "1"; python -m pytest tests/ -q
+$env:AYAKA_FAKE_LLM = "1"; python -m pytest tests/ -q
 
 # SSE 流式
 curl -N -X POST http://127.0.0.1:8000/agent/chat/stream \

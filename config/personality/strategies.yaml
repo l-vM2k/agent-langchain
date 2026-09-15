@@ -1,4 +1,4 @@
-# 人格策略配置 — 对应 WarmCompanionStrategies / RationalAssistantStrategies / QuietGuardianStrategies.java
+# 人格策略配置(三底座: WARM_COMPANION / RATIONAL_ASSISTANT / QUIET_GUARDIAN)
 # behavior_weights: 6 个行为信号的加权矩阵(权重和 = 1.0)
 # emotion_deltas: 8 种情绪的 6 维 deltas(三底座共用 WARM_COMPANION 词表)
 # state: 状态机衰减率/工具 trust delta/attachment 递增系数
