@@ -1,7 +1,6 @@
 # langchain-ayaka
 
 一个基于 Python LangChain + LangGraph 的陪伴型智能体系统。
-个人学习项目,不商用。规格见 `spec/SPEC.md`。
 
 ## 架构
 
