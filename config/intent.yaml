@@ -1,0 +1,26 @@
+# 意图快捷通道 — 对应 application.yml 的 intent 节点
+# 命中 → 预调工具 → 结果注入消息 → 绕过 ReAct 决策(更快更省)
+# priority 数值越小越先匹配
+
+enabled: true
+
+rules:
+  - intentType: GET_TIME
+    pattern: "(?i).*(现在几点|几点了|现在时间|什么时间|当前时间|now time).*"
+    priority: 10
+    enhanceTemplate: "用户问:{message}\n[系统已代为查询:{tool_result}。请基于对话记忆与人格,直接用人格口吻简短告诉用户现在是几点,不要调用任何工具,注意时区转换,也不要附带时区/时间戳术语。]"
+
+  - intentType: GET_DATE
+    pattern: "(?i).*(今天几号|几号了|今天日期|什么日期|当前日期).*"
+    priority: 20
+    enhanceTemplate: "用户问:{message}\n[系统已代为查询:{tool_result}。请基于对话记忆与人格,直接用人格口吻简短告诉用户今天是几号,不要调用任何工具,注意时区转换。]"
+
+  - intentType: GET_WEEKDAY
+    pattern: "(?i).*(星期几|周几|礼拜几).*"
+    priority: 30
+    enhanceTemplate: "用户问:{message}\n[系统已代为查询:{tool_result}。请基于对话记忆与人格,直接用人格口吻简短告诉用户今天星期几,不要调用任何工具,注意时区转换。]"
+
+  - intentType: SIMPLE_CALC
+    pattern: "(?i).*(等于多少|多少是).*|.*[0-9.]+\\s*[+\\-*/×÷]\\s*[0-9.]+.*"
+    priority: 40
+    enhanceTemplate: "用户问:{message}\n[系统已代为计算:结果 = {tool_result}。请基于对话记忆与人格直接简短回答,不要调用任何工具。]"

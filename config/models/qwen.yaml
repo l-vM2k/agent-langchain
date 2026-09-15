@@ -1,0 +1,10 @@
+model_id: 1
+name: "qwen-plus"
+provider_code: "qianwen"
+api_host: "https://dashscope.aliyuncs.com/compatible-mode/v1"
+api_key: "${DASHSCOPE_API_KEY}"
+model_name: "qwen-plus"
+stream: true
+temperature: 0.7
+model_param_json:
+  enable_thinking: false

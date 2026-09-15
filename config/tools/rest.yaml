@@ -1,0 +1,11 @@
+# REST 工具定义 — 对应 builder_mcp_tool 表的 REST 类型
+# LLM 调用时传 input 字符串,POST 到 url(或 GET 带 ?input=)
+
+tools:
+  - name: "weather_query"
+    type: "REST"
+    config:
+      description: "查询指定城市的天气。传入城市名。"
+      url: "https://wttr.in/json"
+      method: "GET"
+      timeout: 10

@@ -1,0 +1,19 @@
+# MCP 工具定义 — 对应 builder_mcp_tool 表的 LOCAL/REMOTE 类型
+# LOCAL: stdio 子进程(command + args)
+# REMOTE: streamable_http / sse 远程服务(url)
+# 需要 pip install langchain-mcp-adapters
+
+tools: []
+# 示例(取消注释并按需修改):
+# tools:
+#   - name: "filesystem"
+#     type: "LOCAL"
+#     config:
+#       command: "npx"
+#       args: ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"]
+#
+#   - name: "remote-mcp"
+#     type: "REMOTE"
+#     config:
+#       baseUrl: "http://127.0.0.1:8000/mcp"
+#       transport: "streamable_http"

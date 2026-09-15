@@ -1,0 +1,62 @@
+# 人格策略配置 — 对应 WarmCompanionStrategies / RationalAssistantStrategies / QuietGuardianStrategies.java
+# behavior_weights: 6 个行为信号的加权矩阵(权重和 = 1.0)
+# emotion_deltas: 8 种情绪的 6 维 deltas(三底座共用 WARM_COMPANION 词表)
+# state: 状态机衰减率/工具 trust delta/attachment 递增系数
+# trigger: 触发阈值
+
+WARM_COMPANION:
+  behavior_weights:
+    warmth: {empathy: 0.30, attachment: 0.25, trust: 0.20, driveConnection: 0.25}
+    initiative: {dominance: 0.35, driveConnection: 0.25, boredom: 0.15, inverseDriveSafety: 0.25}
+    curiosity: {curiosity: 0.60, driveNovelty: 0.40}
+    restraint: {driveSafety: 0.45, formality: 0.10, frustration: 0.35, inverseTrust: 0.10}
+    playfulness: {humor: 0.25, drivePlay: 0.45, valenceNormalized: 0.30}
+    actionDesire: {driveExpression: 0.50, arousalNormalized: 0.25, playfulness: 0.20, driveSafety: 0.10}
+  state:
+    decay_rate_min: 0.05
+    decay_rate_max: 0.35
+    decay_rate_slope: 0.30
+    decay_rate_minutes_divisor: 240.0
+    tool_success_trust_delta: 0.03
+    attachment_increment: 0.01
+  trigger:
+    action_desire_threshold: 0.70
+    care_warmth_threshold: 0.75
+
+RATIONAL_ASSISTANT:
+  behavior_weights:
+    warmth: {empathy: 0.20, attachment: 0.20, trust: 0.20, driveConnection: 0.40}
+    initiative: {dominance: 0.40, driveConnection: 0.30, boredom: 0.10, inverseDriveSafety: 0.20}
+    curiosity: {curiosity: 0.60, driveNovelty: 0.40}
+    restraint: {driveSafety: 0.45, formality: 0.25, frustration: 0.20, inverseTrust: 0.10}
+    playfulness: {humor: 0.15, drivePlay: 0.25, valenceNormalized: 0.60}
+    actionDesire: {driveExpression: 0.40, arousalNormalized: 0.25, playfulness: 0.15, driveSafety: 0.20}
+  state:
+    decay_rate_min: 0.05
+    decay_rate_max: 0.35
+    decay_rate_slope: 0.40
+    decay_rate_minutes_divisor: 240.0
+    tool_success_trust_delta: 0.04
+    attachment_increment: 0.005
+  trigger:
+    action_desire_threshold: 0.80
+    care_warmth_threshold: 0.82
+
+QUIET_GUARDIAN:
+  behavior_weights:
+    warmth: {empathy: 0.35, attachment: 0.30, trust: 0.20, driveConnection: 0.15}
+    initiative: {dominance: 0.20, driveConnection: 0.20, boredom: 0.15, inverseDriveSafety: 0.45}
+    curiosity: {curiosity: 0.55, driveNovelty: 0.45}
+    restraint: {driveSafety: 0.50, formality: 0.20, frustration: 0.20, inverseTrust: 0.10}
+    playfulness: {humor: 0.10, drivePlay: 0.20, valenceNormalized: 0.70}
+    actionDesire: {driveExpression: 0.30, arousalNormalized: 0.20, playfulness: 0.10, driveSafety: 0.40}
+  state:
+    decay_rate_min: 0.05
+    decay_rate_max: 0.35
+    decay_rate_slope: 0.20
+    decay_rate_minutes_divisor: 240.0
+    tool_success_trust_delta: 0.02
+    attachment_increment: 0.008
+  trigger:
+    action_desire_threshold: 0.85
+    care_warmth_threshold: 0.70
